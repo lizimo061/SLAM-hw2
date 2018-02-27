@@ -48,7 +48,7 @@ for i = 1:2:length(measure)
     landmark(i) = r*cos(beta);
     landmark(i+1) = r*sin(beta);
 end
-landmark_cov = 0.3*eye(2*k);
+landmark_cov = 0.2*eye(2*k);
 %==== Setup state vector x with pose and landmark vector ====
 x = [pose ; landmark];
 
@@ -78,10 +78,16 @@ while ischar(tline)
     G = [1 0 -d*sin(theta);
          0 1 d*cos(theta);
          0 0 1];
+     
+    % Transform noise covariance
+    T = [cos(theta) sin(theta) 0;
+         sin(theta) cos(theta) 0;
+         0          0          1];
+     
     F = eye(2*k+3);
     F(1:3,1:3) = G;
     N = zeros(2*k+3);
-    N(1:3,1:3) = control_cov;
+    N(1:3,1:3) = T*control_cov*T';
     P_pre = F*P*F' + N;
     
     %==== Draw predicted state x_pre[] and covariance P_pre[] ====
@@ -93,23 +99,32 @@ while ischar(tline)
     measure = arr';
     %==== TODO: Update Step ====
     %==== (Notice: update state x[] and covariance P[] using input measurement data and measure_cov[]) ====
-    % http://ais.informatik.uni-freiburg.de/teaching/ws12/mapping/pdf/slam04-ekf-slam.pdf
     % Write your code here...
     for i = 1:6
         theta_pre = x_pre(3);
         beta = measure(2*i-1);
         r = measure(2*i);
-        beta_pre = x_pre(2*i+2);
-        r_pre = x_pre(2*i+3);
-        delta = [r*cos(beta_pre+theta_pre);r*sin(beta_pre+theta_pre)];
+        lx_pre = x_pre(2*i+2);
+        ly_pre = x_pre(2*i+3);
+        rx_pre = x_pre(1);
+        ry_pre = x_pre(2);
+        delta = [lx_pre-rx_pre;ly_pre-ry_pre];
         q = delta'*delta;
-        z_pre = [sqrt(q);atan2(delta(2),delta(1))-theta_pre];
+        z_pre = [wrapToPi(atan2(delta(2),delta(1))-theta_pre);sqrt(q)];
         
         F = zeros(5,2*k+3);
         F(1:3,1:3) = eye(3);
         F(4:5,2*i+2:2*i+3) = eye(2);
-        H
+        H = [delta(2)          -delta(1)         -q  -delta(2)        delta(1);
+            -sqrt(q)*delta(1) -sqrt(q)*delta(2)  0   sqrt(q)*delta(1) sqrt(q)*delta(2)];
+        H = H/q;
+        H = H*F;
+        K = P_pre*H'/(H*P_pre*H' + measure_cov);
+        x_pre = x_pre + K*([beta;r]-z_pre);
+        P_pre = (eye(15)-K*H)*P_pre;
     end
+    x = x_pre;
+    P = P_pre;
     
     %==== Plot ====   
     drawTrajAndMap(x, last_x, P, t);
@@ -123,7 +138,10 @@ end
 %==== EVAL: Plot ground truth landmarks ====
 
 % Write your code here...
-    
+l_gt = [3 6 3 12 7 8 7 14 11 6 11 12];
+for i=1:6
+    plot(l_gt(2*i-1),l_gt(2*i),'k*');
+end
 
 %==== Close data file ====
 fclose(fid);

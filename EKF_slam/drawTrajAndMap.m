@@ -1,5 +1,5 @@
 function drawTrajAndMap(x, last_x, P, t)
-    %figure(2)
+    figure(2)
     hold on;
     drawCovEllipse(x(1:2), P(1:2, 1:2), 'b');
     plot([last_x(1) x(1)], [last_x(2) x(2)], 'b');
