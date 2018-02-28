@@ -42,13 +42,18 @@ pose_cov = diag([0.02^2, 0.02^2, 0.1^2]);
 % Write your code here...
 k = 6;
 landmark = zeros(length(measure),1);
-for i = 1:2:length(measure)
-    beta = measure(i);
-    r = measure(i+1);
-    landmark(i) = r*cos(beta);
-    landmark(i+1) = r*sin(beta);
+landmark_cov = zeros(2*k);
+for i = 1:k
+    beta = measure(2*i-1);
+    r = measure(2*i);
+    landmark(2*i-1) = r*cos(beta);
+    landmark(2*i) = r*sin(beta);
+    Gtmp = [1 0 -r*sin(beta);
+            0 1 r*cos(beta)];
+    Qtmp = [-r*sin(beta) cos(beta);
+            r*cos(beta)  sin(beta)];
+    landmark_cov(2*i-1:2*i,2*i-1:2*i) = Gtmp*pose_cov*Gtmp' + Qtmp*measure_cov*Qtmp';
 end
-landmark_cov = 0.2*eye(2*k);
 %==== Setup state vector x with pose and landmark vector ====
 x = [pose ; landmark];
 
@@ -80,8 +85,8 @@ while ischar(tline)
          0 0 1];
      
     % Transform noise covariance
-    T = [cos(theta) sin(theta) 0;
-         sin(theta) cos(theta) 0;
+    T = [cos(theta) -sin(theta) 0;
+         sin(theta) cos(theta)  0;
          0          0          1];
      
     F = eye(2*k+3);
