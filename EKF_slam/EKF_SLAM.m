@@ -147,6 +147,15 @@ l_gt = [3 6 3 12 7 8 7 14 11 6 11 12];
 for i=1:6
     plot(l_gt(2*i-1),l_gt(2*i),'k*');
 end
+l_est = x(4:end)';
+l_cov = P(4:end,4:end);
+Euc = zeros(6,1);
+Maha = zeros(6,1);
+for i=1:6
+    tmp = l_gt(2*i-1:2*i)-l_est(2*i-1:2*i);
+    Euc(i) = norm(tmp);
+    Maha(i) = sqrt(tmp/l_cov(2*i-1:2*i,2*i-1:2*i)*tmp');
+end
 
 %==== Close data file ====
 fclose(fid);
